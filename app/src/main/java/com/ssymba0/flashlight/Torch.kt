@@ -123,6 +123,54 @@ object Torch {
 
     fun toggle(): Boolean = if (isOn) turnOff() else setLevel(lastLevel)
 
+    /** Everything the phone reports about flash brightness control, for troubleshooting. */
+    fun diagnostics(): String {
+        val sb = StringBuilder()
+        sb.append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
+        sb.append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append("\n")
+        sb.append("Using camera: ").append(cameraId).append("\n")
+        val ids = try { cameraManager.cameraIdList.toList() } catch (e: Exception) { emptyList() }
+        for (id in ids) {
+            val c = try { cameraManager.getCameraCharacteristics(id) } catch (_: Exception) { continue }
+            val facing = when (c.get(CameraCharacteristics.LENS_FACING)) {
+                CameraCharacteristics.LENS_FACING_BACK -> "back"
+                CameraCharacteristics.LENS_FACING_FRONT -> "front"
+                else -> "other"
+            }
+            sb.append("\nCamera ").append(id).append(" (").append(facing).append(")")
+            sb.append(" flash=").append(c.get(CameraCharacteristics.FLASH_INFO_AVAILABLE))
+            if (Build.VERSION.SDK_INT >= 33) {
+                sb.append("\n  torch max=").append(c.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL))
+                sb.append(" default=").append(c.get(CameraCharacteristics.FLASH_INFO_STRENGTH_DEFAULT_LEVEL))
+            }
+            if (Build.VERSION.SDK_INT >= 35) {
+                sb.append("\n  session torch max=").append(c.get(CameraCharacteristics.FLASH_TORCH_STRENGTH_MAX_LEVEL))
+                sb.append(" default=").append(c.get(CameraCharacteristics.FLASH_TORCH_STRENGTH_DEFAULT_LEVEL))
+                sb.append("\n  session flash max=").append(c.get(CameraCharacteristics.FLASH_SINGLE_STRENGTH_MAX_LEVEL))
+            }
+            // Any other flash/torch keys, including manufacturer-specific ones.
+            for (key in c.keys) {
+                val name = key.name
+                if (!name.contains("flash", true) && !name.contains("torch", true)) continue
+                if (name.startsWith("android.flash.")) continue
+                val v = try { describe(c.get(key)) } catch (_: Exception) { "?" }
+                sb.append("\n  ").append(name).append('=').append(v)
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun describe(v: Any?): String = when (v) {
+        null -> "null"
+        is IntArray -> v.joinToString(",", "[", "]")
+        is FloatArray -> v.joinToString(",", "[", "]")
+        is LongArray -> v.joinToString(",", "[", "]")
+        is ByteArray -> v.joinToString(",", "[", "]")
+        is BooleanArray -> v.joinToString(",", "[", "]")
+        is Array<*> -> v.joinToString(",", "[", "]")
+        else -> v.toString()
+    }
+
     private fun readHardwareLevel(id: String): Int {
         if (Build.VERSION.SDK_INT >= 33 && maxLevel > 1) {
             try {

@@ -2,6 +2,9 @@ package com.ssymba0.flashlight
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -56,6 +59,8 @@ class MainActivity : Activity() {
             it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             maybeAskForNotifications()
         }
+
+        infoText.setOnClickListener { showDetails() }
 
         if (!Torch.hasFlash) {
             slider.isEnabled = false
@@ -113,13 +118,26 @@ class MainActivity : Activity() {
             !Torch.isAvailable -> getString(R.string.in_use)
             !Torch.supportsLevels -> getString(R.string.no_levels)
             else -> getString(R.string.levels, Torch.maxLevel)
-        }
+        } + "\n" + getString(R.string.tap_for_details)
     }
 
     private fun labelFor(level: Int): String = when {
         level <= 0 -> getString(R.string.off)
         !Torch.supportsLevels -> getString(R.string.on)
         else -> "${(level * 100f / Torch.maxLevel).roundToInt()}%"
+    }
+
+    private fun showDetails() {
+        val text = Torch.diagnostics()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.details)
+            .setMessage(text)
+            .setPositiveButton(R.string.copy) { _, _ ->
+                getSystemService(ClipboardManager::class.java)
+                    .setPrimaryClip(ClipData.newPlainText("Flashlight details", text))
+            }
+            .setNegativeButton(R.string.close, null)
+            .show()
     }
 
     private fun showError() {

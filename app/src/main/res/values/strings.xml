@@ -10,6 +10,10 @@
     <string name="no_levels">This phone doesn\'t let apps dim the flash, so it works as on/off only.</string>
     <string name="no_flash">No flashlight found on this device.</string>
     <string name="in_use">Flashlight is unavailable while the camera is in use.</string>
+    <string name="tap_for_details">Tap here for flash details</string>
+    <string name="details">Flash details</string>
+    <string name="copy">Copy</string>
+    <string name="close">Close</string>
     <string name="notification_channel">Flashlight on</string>
     <string name="notification_title">Flashlight is on</string>
     <string name="notification_text">Brightness %1$d%%</string>
