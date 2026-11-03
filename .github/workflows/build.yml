@@ -1,0 +1,43 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk Flashlight.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Flashlight-apk
+          path: Flashlight.apk
+
+      # Publishes the APK as a GitHub release so it can be downloaded straight to a phone.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" Flashlight.apk \
+            --target "$GITHUB_SHA" \
+            --title "Flashlight build ${{ github.run_number }}" \
+            --notes "Download Flashlight.apk below and open it on your phone to install." \
+            --latest

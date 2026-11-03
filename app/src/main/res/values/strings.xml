@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Flashlight</string>
+    <string name="tile_label">Flashlight+</string>
+    <string name="brightness">Flashlight brightness</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="turn_on">Turn on</string>
+    <string name="turn_off">Turn off</string>
+    <string name="levels">%1$d brightness levels</string>
+    <string name="no_levels">This phone doesn\'t let apps dim the flash, so it works as on/off only.</string>
+    <string name="no_flash">No flashlight found on this device.</string>
+    <string name="in_use">Flashlight is unavailable while the camera is in use.</string>
+    <string name="notification_channel">Flashlight on</string>
+    <string name="notification_title">Flashlight is on</string>
+    <string name="notification_text">Brightness %1$d%%</string>
+</resources>
