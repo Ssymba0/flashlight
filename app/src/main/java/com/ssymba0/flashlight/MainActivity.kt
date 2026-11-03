@@ -24,11 +24,20 @@ class MainActivity : Activity() {
     private lateinit var power: PowerButton
     private lateinit var percentText: TextView
     private lateinit var infoText: TextView
+    private lateinit var smoothText: TextView
 
     private var lastErrorToast = 0L
     private var lastTick = -1
 
     private val torchListener: () -> Unit = { syncFromTorch(animate = true) }
+
+    // Refreshes the pulse rate shown under the button.
+    private val refresh = object : Runnable {
+        override fun run() {
+            updateInfo()
+            infoText.postDelayed(this, 1000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,10 +55,16 @@ class MainActivity : Activity() {
         power = findViewById(R.id.power)
         percentText = findViewById(R.id.percent)
         infoText = findViewById(R.id.info)
+        smoothText = findViewById(R.id.smooth)
+        smoothText.setOnClickListener {
+            Torch.smoothMode = !Torch.smoothMode
+            it.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            updateLabels()
+        }
 
         slider.onValueChange = { v -> onSliderMoved(v) }
         slider.onRelease = {
-            // Settle on the step the hardware is actually at.
+            // In step mode, settle on the step the hardware is actually at.
             slider.setValue(Torch.fraction, animate = true)
             updateLabels()
             maybeAskForNotifications()
@@ -74,28 +89,25 @@ class MainActivity : Activity() {
         super.onStart()
         Torch.addListener(torchListener)
         syncFromTorch(animate = false)
+        infoText.post(refresh)
     }
 
     override fun onStop() {
+        infoText.removeCallbacks(refresh)
         Torch.removeListener(torchListener)
         super.onStop()
     }
 
-    private fun levelFor(v: Float): Int =
-        if (v <= 0f) 0 else ceil(v * Torch.maxLevel).toInt().coerceIn(1, Torch.maxLevel)
-
     private fun onSliderMoved(v: Float) {
-        val target = levelFor(v)
-        val current = if (Torch.isOn) Torch.level else 0
-        if (target != current && !Torch.setLevel(target)) showError()
-        tick(target)
-        percentText.text = labelFor(target)
+        if (!Torch.setBrightness(v)) showError()
+        tick(v)
+        percentText.text = labelFor(Torch.effectiveBrightness(v))
     }
 
-    /** A light haptic tick per brightness step (capped at ~20 ticks over the full range). */
-    private fun tick(level: Int) {
-        val max = Torch.maxLevel
-        val bucket = if (max <= 20) level else ceil(level * 20f / max).toInt()
+    /** A light haptic tick per hardware step, or every 5% in smooth mode. */
+    private fun tick(v: Float) {
+        val steps = if (Torch.smoothMode || Torch.maxLevel > 20) 20 else Torch.maxLevel
+        val bucket = if (v <= 0f) 0 else ceil(v * steps).toInt()
         if (bucket != lastTick) {
             if (lastTick != -1) slider.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             lastTick = bucket
@@ -112,19 +124,28 @@ class MainActivity : Activity() {
     }
 
     private fun updateLabels() {
-        percentText.text = labelFor(if (Torch.isOn) Torch.level else 0)
+        percentText.text = labelFor(Torch.fraction)
+        smoothText.text = getString(if (Torch.smoothMode) R.string.smooth_on else R.string.smooth_off)
+        smoothText.alpha = if (Torch.smoothMode) 1f else 0.6f
+        updateInfo()
+    }
+
+    private fun updateInfo() {
         infoText.text = when {
             !Torch.hasFlash -> getString(R.string.no_flash)
             !Torch.isAvailable -> getString(R.string.in_use)
+            Torch.smoothMode && Torch.isPulsing ->
+                getString(R.string.pulsing, Torch.pulseRate.roundToInt())
+            Torch.smoothMode -> getString(R.string.smooth_info, Torch.maxLevel)
             !Torch.supportsLevels -> getString(R.string.no_levels)
             else -> getString(R.string.levels, Torch.maxLevel)
         } + "\n" + getString(R.string.tap_for_details)
     }
 
-    private fun labelFor(level: Int): String = when {
-        level <= 0 -> getString(R.string.off)
-        !Torch.supportsLevels -> getString(R.string.on)
-        else -> "${(level * 100f / Torch.maxLevel).roundToInt()}%"
+    private fun labelFor(b: Float): String = when {
+        b <= 0f -> getString(R.string.off)
+        !Torch.smoothMode && !Torch.supportsLevels -> getString(R.string.on)
+        else -> "${(b * 100f).roundToInt().coerceAtLeast(1)}%"
     }
 
     private fun showDetails() {

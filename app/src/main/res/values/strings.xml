@@ -10,6 +10,10 @@
     <string name="no_levels">This phone doesn\'t let apps dim the flash, so it works as on/off only.</string>
     <string name="no_flash">No flashlight found on this device.</string>
     <string name="in_use">Flashlight is unavailable while the camera is in use.</string>
+    <string name="smooth_on">Smooth mode: On</string>
+    <string name="smooth_off">Smooth mode: Off</string>
+    <string name="smooth_info">Smooth mode blends the %1$d hardware steps by pulsing the light.</string>
+    <string name="pulsing">Smooth mode · pulsing %1$d times a second</string>
     <string name="tap_for_details">Tap here for flash details</string>
     <string name="details">Flash details</string>
     <string name="copy">Copy</string>
